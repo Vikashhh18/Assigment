@@ -1,0 +1,25 @@
+.p-datatable th, .p-datatable td {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 300px;
+}
+
+.p-datatable .p-datatable-thead > tr > th {
+  font-weight: 600;
+  background-color: #f4f6f8;
+}
+
+.p-datatable .p-datatable-tbody > tr:hover {
+  background-color: #f0f8ff;
+}
+
+
+.p-column-filter-menu-button .p-button-icon {
+  display: none !important;
+}
+
+/* Or fully hide the filter icon if it's inside a header */
+.p-column-filter-menu {
+  display: none !important;
+}
