@@ -1,5 +1,5 @@
 // MainWork.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { OverlayPanel } from "primereact/overlaypanel";
@@ -24,7 +24,7 @@ export default function MainWork() {
   const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(false);
   const [first, setFirst] = useState(0);
-  const [selectedRows, setSelectedRows] = useState<{ [id: number]: Artwork }>({});
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [inputValue, setInputValue] = useState("");
   const op = useRef<OverlayPanel>(null);
 
@@ -50,30 +50,38 @@ export default function MainWork() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const count = parseInt(inputValue);
     if (!isNaN(count) && count > 0) {
-      const newSelected = { ...selectedRows };
+      const newIds = new Set<number>();
       let remaining = count;
+      let page = 1;
 
-      const selectRows = async (page: number) => {
+      while (remaining > 0) {
         const res = await fetch(
           `https://api.artic.edu/api/v1/artworks?page=${page}&limit=${PAGE_SIZE}&fields=id,title,place_of_origin,artist_display,inscriptions,date_start,date_end`
         );
         const json = await res.json();
-        for (const item of json.data) {
-          if (remaining <= 0) break;
-          newSelected[item.id] = item;
-          remaining--;
-        }
-        if (remaining > 0 && json.pagination.current_page < json.pagination.total_pages) {
-          await selectRows(page + 1);
-        } else {
-          setSelectedRows(newSelected);
-        }
-      };
 
-      selectRows(1);
+        for (const item of json.data) {
+          if (!newIds.has(item.id)) {
+            newIds.add(item.id);
+            remaining--;
+          }
+          if (remaining === 0) break;
+        }
+
+        if (
+          remaining > 0 &&
+          json.pagination.current_page < json.pagination.total_pages
+        ) {
+          page++;
+        } else {
+          break;
+        }
+      }
+
+      setSelectedIds(newIds);
       op.current?.hide();
     }
   };
@@ -98,6 +106,11 @@ export default function MainWork() {
       />
       <Button label="Submit" onClick={handleSubmit} />
     </div>
+  );
+
+  const selectedRows = useMemo(
+    () => data.filter((item) => selectedIds.has(item.id)),
+    [selectedIds, data]
   );
 
   return (
@@ -125,12 +138,12 @@ export default function MainWork() {
         onPage={(e) => setFirst(e.first ?? 0)}
         dataKey="id"
         selectionMode="multiple"
-        selection={Object.values(selectedRows)}
+        selection={selectedRows}
         onSelectionChange={(e) => {
           const selected = e.value as Artwork[];
-          const updated: { [id: number]: Artwork } = {};
-          selected.forEach((item) => (updated[item.id] = item));
-          setSelectedRows(updated);
+          const newSet = new Set<number>();
+          selected.forEach((item) => newSet.add(item.id));
+          setSelectedIds(newSet);
         }}
       >
         <Column selectionMode="multiple" headerStyle={{ width: "3em" }} />
